@@ -7,11 +7,10 @@ use std::sync::{Arc, atomic::Ordering};
 
 use common::check;
 use high_mlir::{
-    Attr, F32, I32, INDEX, IntType, Val, arith, builtin, context,
+    Attr, F32, I32, INDEX, IntType, Val, arith, builtin,
     annotations::{ADD_RUST_LOC, Location},
     memref, scf, sig,
 };
-use melior::ir::operation::{OperationLike, OperationPrintingFlags};
 
 fn file() -> &'static str {
     file!()
@@ -42,11 +41,15 @@ fn rust_locations() {
     assert!(constant.contains(&format!(":{add_line}:")), "{text}");
 
     // the melior operations carry the locations
-    let ctx = context();
-    let built = module.to_melior(&ctx).unwrap();
-    let flags = OperationPrintingFlags::new().enable_debug_info(true, false);
-    let debug = built.as_operation().to_string_with_flags(flags).unwrap();
-    assert!(debug.contains(&format!("\"{}\":{add_line}:", file())), "{debug}");
+    #[cfg(feature = "melior")]
+    {
+        use melior::ir::operation::{OperationLike, OperationPrintingFlags};
+        let ctx = high_mlir::context();
+        let built = module.to_melior(&ctx).unwrap();
+        let flags = OperationPrintingFlags::new().enable_debug_info(true, false);
+        let debug = built.as_operation().to_string_with_flags(flags).unwrap();
+        assert!(debug.contains(&format!("\"{}\":{add_line}:", file())), "{debug}");
+    }
     ADD_RUST_LOC.store(false, Ordering::Relaxed);
 }
 

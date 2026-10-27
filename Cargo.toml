@@ -1,6 +1,6 @@
 [package]
 name = "high-mlir"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.88"
 description = "Build MLIR as typed Rust expressions: the arith, affine, linalg, tensor, memref, scf, vector, gpu and other upstream dialects, printed as text or converted to melior"
@@ -26,6 +26,21 @@ dyn-clone = "1.0.20"
 dyn-eq = "0.1.3"
 dyn-hash = "1.0.0"
 indenter = "0.3.4"
-melior = "0.28.2"
-mlir-sys = "230.0.2"
+melior = { version = "0.28.2", optional = true }
+mlir-sys = { version = "230.0.2", optional = true }
 spin = "0.12.3"
+
+[features]
+default = ["melior"]
+# Conversion to melior IR (`Root::to_melior`, `context`); links against an
+# LLVM/MLIR 23 installation. Without it, IR is built and printed as text only.
+melior = ["dep:melior", "dep:mlir-sys"]
+
+[[example]]
+name = "demo"
+required-features = ["melior"]
+
+[package.metadata.docs.rs]
+# docs.rs has no LLVM/MLIR installation: document without the melior conversion.
+no-default-features = true
+rustdoc-args = ["--cfg", "docsrs"]

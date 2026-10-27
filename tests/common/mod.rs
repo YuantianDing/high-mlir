@@ -1,19 +1,29 @@
 #![allow(dead_code)]
 
-use high_mlir::{Root, builtin, context};
-use melior::ir::{Module as MeliorModule, operation::OperationLike};
+use high_mlir::{Root, builtin};
 
-/// Prints `module`, checks that MLIR parses and verifies the text, that the
-/// melior conversion verifies, and that both give the same IR.
+/// Prints `module`; with the `melior` feature, also checks that MLIR parses
+/// and verifies the text, that the melior conversion verifies, and that both
+/// give the same IR.
 pub fn check(module: &Root) -> String {
     let text = module.to_string();
+    assert!(!text.starts_with("<error"), "{text}");
+    #[cfg(feature = "melior")]
+    verify(module, &text);
+    text
+}
+
+#[cfg(feature = "melior")]
+fn verify(module: &Root, text: &str) {
+    use high_mlir::context;
+    use melior::ir::{Module as MeliorModule, operation::OperationLike};
+
     let ctx = context();
-    let parsed = MeliorModule::parse(&ctx, &text).unwrap_or_else(|| panic!("MLIR rejected:\n{text}"));
+    let parsed = MeliorModule::parse(&ctx, text).unwrap_or_else(|| panic!("MLIR rejected:\n{text}"));
     assert!(parsed.as_operation().verify(), "parsed module does not verify:\n{text}");
     let built = module.to_melior(&ctx).unwrap_or_else(|e| panic!("conversion failed: {e}\n{text}"));
     assert!(built.as_operation().verify(), "built module does not verify:\n{text}");
     assert_eq!(parsed.as_operation().to_string(), built.as_operation().to_string());
-    text
 }
 
 /// Checks the module of what `body` builds and returns the printed text.

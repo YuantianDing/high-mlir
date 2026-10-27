@@ -5,8 +5,9 @@
 //! returns a `Val<IntType>`. Operands are type-checked as the IR is built,
 //! operations are emitted in the order they are built, and regions
 //! (modules, functions, loop bodies, ...) are Rust closures. The module
-//! prints as textual MLIR through `Display`, or converts to [`melior`] IR
-//! with [`Root::to_melior`].
+//! prints as textual MLIR through `Display`, or converts to
+//! [melior](https://crates.io/crates/melior) IR with `Root::to_melior`
+//! (with the default `melior` feature).
 //!
 //! ```
 //! use high_mlir::{F32, INDEX, builtin, memref, scf, sig};
@@ -54,11 +55,18 @@
 //! - **Roots.** [`builtin::module`] returns the [`Root`] owning the IR.
 //!   [`ClosureBuilder`] builds the regions of new closure operations.
 //!
-//! Building requires an LLVM/MLIR 23 installation for [`mlir_sys`]; see the
-//! README.
+//! # Features
+//!
+//! - `melior` (default): conversion to melior IR (`Root::to_melior`,
+//!   `context`). It links against an LLVM/MLIR 23 installation through
+//!   `mlir-sys`; see the README. Without it, the crate is pure Rust: IR is
+//!   built, type-checked and printed as text.
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 /// MLIR attributes and affine maps.
 pub mod attr;
+#[cfg(feature = "melior")]
 mod convert;
 /// The dialects; see the README's roadmap for their coverage.
 pub mod dialect;
@@ -70,8 +78,12 @@ pub mod val;
 pub mod annotations;
 
 pub use attr::{AffineExpr, AffineMap, Attr, IntegerSet};
+#[cfg(feature = "melior")]
+#[cfg_attr(docsrs, doc(cfg(feature = "melior")))]
 pub use convert::context;
 /// The melior version this crate converts to.
+#[cfg(feature = "melior")]
+#[cfg_attr(docsrs, doc(cfg(feature = "melior")))]
 pub use melior;
 pub use dialect::{affine, arith, bufferization, builtin, complex, func, gpu, index, linalg, math, memref, scf, tensor, ub, vector};
 pub use print::OpPrinter;
@@ -213,6 +225,6 @@ macro_rules! __index {
 }
 
 /// The examples of the README, compiled and run as doctests.
-#[cfg(doctest)]
+#[cfg(all(doctest, feature = "melior"))]
 #[doc = include_str!("../README.md")]
 pub struct ReadmeDoctests;

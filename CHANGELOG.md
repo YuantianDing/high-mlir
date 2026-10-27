@@ -24,6 +24,8 @@ First release.
   (kernels, launches, thread queries and synchronous memory operations);
   `func.call_indirect` and `func.constant`. The roadmap in the README lists
   what is missing.
-- Printing as textual MLIR and conversion to melior IR.
+- Printing as textual MLIR and conversion to melior IR. The conversion is
+  the default `melior` feature, the only part that needs LLVM/MLIR; without
+  it the crate is pure Rust, as docs.rs builds it.
 - Annotations: discardable attributes and source locations, including the
   Rust location of the code that built each operation (`ADD_RUST_LOC`).

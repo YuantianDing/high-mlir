@@ -21,6 +21,7 @@ pub enum Error {
     /// MLIR rejected a type or attribute.
     Parse(String),
     /// Melior failed to build the IR.
+    #[cfg(feature = "melior")]
     Melior(melior::Error),
 }
 
@@ -29,6 +30,7 @@ impl fmt::Display for Error {
         match self {
             Error::NotVisible(op) => write!(f, "a value of `{op}` is used where it is not defined"),
             Error::Parse(s) => write!(f, "MLIR could not parse `{s}`"),
+            #[cfg(feature = "melior")]
             Error::Melior(e) => write!(f, "{e}"),
         }
     }
@@ -36,6 +38,7 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+#[cfg(feature = "melior")]
 impl From<melior::Error> for Error {
     fn from(e: melior::Error) -> Error {
         Error::Melior(e)

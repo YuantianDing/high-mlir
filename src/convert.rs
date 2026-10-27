@@ -122,6 +122,7 @@ fn build_region<'c>(context: &'c Context, region: &SRegion, env: &mut Env) -> Re
     Ok(result)
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "melior")))]
 impl Root {
     /// Builds the melior operation of the IR.
     pub fn to_melior_operation<'c>(&self, context: &'c Context) -> Result<Operation<'c>, Error> {

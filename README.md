@@ -56,9 +56,10 @@ see [Source locations](#annotations-and-source-locations)).
 
 ## Requirements
 
-`high-mlir` builds on [`mlir-sys`](https://crates.io/crates/mlir-sys), which
-links against an **LLVM/MLIR 23** installation. Point it to the installation
-prefix (the directory with `bin/llvm-config`):
+The conversion to melior (the default `melior` feature) builds on
+[`mlir-sys`](https://crates.io/crates/mlir-sys), which links against an
+**LLVM/MLIR 23** installation. Point it to the installation prefix (the
+directory with `bin/llvm-config`):
 
 ```sh
 export MLIR_SYS_230_PREFIX=/path/to/llvm
@@ -71,6 +72,14 @@ or set them for a project in `.cargo/config.toml`:
 [env]
 MLIR_SYS_230_PREFIX = "/path/to/llvm"
 TABLEGEN_230_PREFIX = "/path/to/llvm"
+```
+
+Without the `melior` feature the crate is pure Rust and needs no LLVM: IR is
+built, type-checked and printed as text (this is how docs.rs builds it):
+
+```toml
+[dependencies]
+high-mlir = { version = "0.1", default-features = false }
 ```
 
 The minimum supported Rust version is 1.88.
