@@ -25,11 +25,13 @@
 //!
 //! - Functions: [`sig!`] and [`func::Signature`]; modules: [`builtin::module`].
 //! - Operations: one function per operation, named after it, in [`arith`],
-//!   [`mod@memref`], [`mod@scf`] (with the [`scf!`] macro) and [`mod@vector`];
-//!   memref and vector values also have them as methods.
-//! - Types: [`types`], the constants [`I32`], [`F32`], [`INDEX`], … and the
+//!   [`mod@memref`], [`mod@scf`] (with the [`scf!`] macro), [`mod@vector`],
+//!   [`mod@tensor`], [`math`], [`index`], [`complex`], [`ub`],
+//!   [`bufferization`], [`affine`], [`linalg`] and [`gpu`]; memref, vector,
+//!   tensor, complex and scalar values also have common ones as methods.
+//! - Types: [`types`] (including [`ComplexType`]), the constants [`I32`], [`F32`], [`INDEX`], … and the
 //!   [`memref!`], [`tensor!`] and [`vector!`] macros.
-//! - Attributes: [`Attr`] and [`AffineMap`]; discardable attributes and
+//! - Attributes: [`Attr`], [`AffineMap`] and [`IntegerSet`]; discardable attributes and
 //!   source locations: [`annotations`].
 //! - New operations and types: [`HighMlir`], [`Closure`] and [`MlirType`].
 //!
@@ -58,7 +60,7 @@
 /// MLIR attributes and affine maps.
 pub mod attr;
 mod convert;
-/// The dialects: [`arith`], [`builtin`], [`func`], [`mod@memref`], [`mod@scf`] and [`mod@vector`].
+/// The dialects; see the README's roadmap for their coverage.
 pub mod dialect;
 pub mod mixed;
 mod print;
@@ -67,16 +69,16 @@ pub mod types;
 pub mod val;
 pub mod annotations;
 
-pub use attr::{AffineExpr, AffineMap, Attr};
+pub use attr::{AffineExpr, AffineMap, Attr, IntegerSet};
 pub use convert::context;
 /// The melior version this crate converts to.
 pub use melior;
-pub use dialect::{arith, builtin, func, memref, scf, vector};
+pub use dialect::{affine, arith, bufferization, builtin, complex, func, gpu, index, linalg, math, memref, scf, tensor, ub, vector};
 pub use print::OpPrinter;
 pub use lower::Error;
 pub use mixed::{IntoMixed, Mixed, MixedList};
 pub use types::{
-    BF16, F16, F32, F64, FloatType, FunctionType, I1, I8, I16, I32, I64, INDEX, IndexType, IntType, Layout,
+    BF16, ComplexType, F16, F32, F64, FloatType, FunctionType, I1, I8, I16, I32, I64, INDEX, IndexType, IntType, Layout,
     MemRefType, MlirType, NoneType, TensorType, Ty, UnrankedMemRefType, VectorType,
 };
 pub use val::{

@@ -75,14 +75,25 @@ The minimum supported Rust version is 1.88.
 
 ## Dialects
 
-| Dialect   | Coverage |
-|-----------|----------|
-| `arith`   | every operation, including the overflow, `exact`, `nneg`, fast-math and rounding-mode flags |
-| `memref`  | every operation: allocation, loads and stores, views (`subview`, `reinterpret_cast`, `expand_shape`, …), globals, atomics, DMA |
-| `scf`     | `for`, `if`, `while`, `parallel` with reductions, `forall`, `index_switch`, `execute_region` |
-| `vector`  | every operation: construction and shape, reductions and contractions, masked/gather/scatter/transfer accesses, `mask`, `print` |
-| `func`    | `func.func` (with external declarations), `func.call`, `func.return` |
-| `builtin` | `builtin.module` |
+| Dialect         | Coverage |
+|-----------------|----------|
+| `affine`        | `apply`, `min`, `max`, `load`/`store` (with affine subscripts), `vector_load`/`vector_store`, `prefetch`, `for` (with `iter_args` and min/max bounds), `if` (on integer sets), `parallel` (with reductions), `linearize_index`/`delinearize_index` |
+| `arith`         | every operation, including the overflow, `exact`, `nneg`, fast-math and rounding-mode flags |
+| `bufferization` | every operation: `alloc_tensor`, `to_tensor`/`to_buffer`, `materialize_in_destination`, `clone`, `dealloc`, `dealloc_tensor` |
+| `builtin`       | `builtin.module` |
+| `complex`       | every operation, with operators on `Val<ComplexType>` |
+| `func`          | `func.func` (with external declarations), `func.call`, `func.call_indirect`, `func.constant`, `func.return` |
+| `gpu`           | `gpu.module`, `gpu.func` (kernels), `gpu.launch_func`, `gpu.launch`, thread/block/grid/cluster ids and sizes, `barrier`, `shuffle`, `all_reduce`/`subgroup_reduce`, `printf`, `dynamic_shared_memory`, and synchronous `alloc`/`dealloc`/`memcpy`/`memset`/`wait` |
+| `index`         | every operation |
+| `linalg`        | `generic` (with `linalg.index`), `map`, `reduce`, `fill`, `copy`, `transpose`, `broadcast`, `softmax`, the elementwise, contraction (`matmul`, `batch_matmul`, `dot`, `mmt4d`, ...), convolution and pooling named operations |
+| `math`          | every operation, with methods on `Val<FloatType>` and `Val<IntType>` |
+| `memref`        | every operation: allocation, loads and stores, views (`subview`, `reinterpret_cast`, `expand_shape`, …), globals, atomics, DMA |
+| `scf`           | `for`, `if`, `while`, `parallel` with reductions, `forall`, `index_switch`, `execute_region` |
+| `tensor`        | every operation but `parallel_insert_slice`, with methods on `Val<TensorType>` |
+| `ub`            | every operation |
+| `vector`        | every operation: construction and shape, reductions and contractions, masked/gather/scatter/transfer accesses, `mask`, `print` |
+
+See the [roadmap](#roadmap--todos) for what is missing.
 
 Operations are built by functions named after them, with operands first
 and optional attributes last (`()` for none):
@@ -141,6 +152,47 @@ builtin::module(|| {
 
 With `annotations::ADD_RUST_LOC` set (the default), every operation records
 the Rust source location that built it, and prints it as `loc(...)`.
+
+## Roadmap / TODOs
+
+Upstream MLIR dialects; out of scope are dialects built on blocks and
+branches (`cf`, unstructured regions) and third-party dialects (`stablehlo`,
+`chlo`, `mhlo`, `shardy`, `triton`, ...).
+
+- Support more MLIR dialects:
+    - [/] `affine`: missing `affine.dma_start` and `affine.dma_wait`; `affine.parallel` bounds are one
+      constant or value per dimension (no min/max bound groups); `linearize_index` has no `disjoint` flag.
+    - [x] `arith`
+    - [ ] `async`
+    - [x] `bufferization`
+    - [/] `builtin`: only `builtin.module`; missing `unrealized_conversion_cast`.
+    - [x] `complex`
+    - [ ] `emitc`
+    - [x] `func`
+    - [/] `gpu`: missing async tokens (`!gpu.async.token`) and the asynchronous forms of the memory
+      operations, cluster sizes and dynamic shared memory size of launches, workgroup/private attributions,
+      `all_reduce` with a custom region, `ballot`, `rotate`, `subgroup_broadcast`,
+      `warp_execute_on_lane_0`, `host_register`/`host_unregister`, `gpu.binary`, `set_default_device`,
+      the `subgroup_mma_*` operations and the sparse operations (`create_coo`, `spmv`, `spmm`, ...).
+    - [x] `index`
+    - [/] `linalg`: missing `contract`, `elementwise`, `fill_rng_2d`, the quantized operations
+      (`quantized_matmul`, `quantized_batch_matmul`, `*_q` convolutions), the unsigned poolings, the
+      `winograd_*` transforms, and the `indexing_maps`/`cast` attributes of `matmul`-like operations;
+      `map` and `reduce` print in the generic form.
+    - [ ] `llvm`
+    - [x] `math`
+    - [x] `memref`
+    - [ ] `nvgpu`
+    - [ ] `nvvm`
+    - [ ] `pdl`
+    - [ ] `quant`
+    - [/] `scf`: `scf.forall` has no `shared_outs` (and so no `tensor.parallel_insert_slice`).
+    - [ ] `shape`
+    - [ ] `sparse_tensor`: also needs tensor encodings on `TensorType`.
+    - [/] `tensor`: missing `parallel_insert_slice` (see `scf`), unranked tensors and tensor encodings.
+    - [ ] `transform`
+    - [x] `ub`
+    - [x] `vector`
 
 ## License
 

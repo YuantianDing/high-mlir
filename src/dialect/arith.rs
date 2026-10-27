@@ -219,7 +219,7 @@ tuple_operands! {
 
 /// Converts two operands, using the type of whichever is a value for literals.
 #[track_caller]
-fn operands(op: &str, lhs: impl Operand, rhs: impl Operand) -> Result<(Val, Val), TypeError> {
+pub(crate) fn operands(op: &str, lhs: impl Operand, rhs: impl Operand) -> Result<(Val, Val), TypeError> {
     let like = lhs
         .ty_hint()
         .or_else(|| rhs.ty_hint())

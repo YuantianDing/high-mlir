@@ -410,6 +410,32 @@ impl fmt::Display for FloatType {
     }
 }
 
+/// `complex<T>` of a float type `T`.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ComplexType {
+    /// The type of the real and imaginary parts.
+    pub element: Ty,
+}
+
+impl ComplexType {
+    /// `complex<element>`
+    pub fn new(element: impl Into<Ty>) -> ComplexType {
+        ComplexType { element: element.into() }
+    }
+}
+
+impl MlirType for ComplexType {
+    fn bit_width(&self) -> Option<u32> {
+        self.element.bit_width().map(|w| 2 * w)
+    }
+}
+
+impl fmt::Display for ComplexType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "complex<{}>", self.element)
+    }
+}
+
 /// A ranked tensor `tensor<4x?xT>`.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TensorType {

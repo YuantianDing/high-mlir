@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    Attr, BuiltRegion, Closure, ClosureBuilder, Edges, HighMlir, OpPrinter, Ty, TypeError, Val,
+    Attr, BuiltRegion, Closure, ClosureBuilder, Edges, FunctionType, HighMlir, OpPrinter, Ty, TypeError, Val,
     arith::Operands,
     attr::Symbol,
     types::{ResultTypes, TypeList},
@@ -297,5 +297,102 @@ impl HighMlir for Call {
         let callee = &self.callee;
         let args = p.operands(0..self.args.len());
         write!(p, "func.call {}({args}) : {}", Symbol(&callee.name), callee.ty())
+    }
+}
+
+impl<A, R: FromTuple> Signature<A, R> {
+    /// `func.constant`: this function as a value, for [`call_indirect`].
+    #[track_caller]
+    pub fn try_constant(&self) -> Result<Val<FunctionType>, TypeError> {
+        Val::new_typed(Constant { callee: self.clone().with_marker() })
+    }
+
+    /// `func.constant`: this function as a value, for [`call_indirect`].
+    #[track_caller]
+    pub fn constant(&self) -> Val<FunctionType> {
+        self.try_constant().or_panic()
+    }
+}
+
+/// `func.constant`
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Constant {
+    pub callee: Signature,
+}
+
+impl HighMlir for Constant {
+    fn name(&self) -> &str {
+        "func.constant"
+    }
+
+    fn inputs(&self) -> Edges<'_> {
+        Box::new(std::iter::empty())
+    }
+
+    fn result_types(&self) -> Vec<Ty> {
+        vec![self.callee.ty()]
+    }
+
+    fn attributes(&self) -> Vec<(String, Attr)> {
+        vec![("value".into(), Attr::Symbol(self.callee.name.clone()))]
+    }
+
+    fn print(&self, p: &mut OpPrinter<'_>) -> fmt::Result {
+        p.results_lhs()?;
+        write!(p, "func.constant {} : {}", Symbol(&self.callee.name), self.callee.ty())
+    }
+}
+
+/// `func.call_indirect`
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct CallIndirect {
+    pub callee: Val,
+    pub args: Vec<Val>,
+}
+
+/// `func.call_indirect` of a function value; literal arguments take the parameter types.
+#[track_caller]
+pub fn try_call_indirect(callee: impl Into<Val>, args: impl Operands) -> Result<Tuple, TypeError> {
+    let name = "func.call_indirect";
+    let callee = callee.into();
+    let ty = callee.try_ty().ok_or_else(|| TypeError::new(name, "the callee is an operation without results"))?;
+    let Some(f) = ty.downcast_ref::<FunctionType>().cloned() else {
+        return Err(TypeError::new(name, format!("expected a function, not `{ty}`")));
+    };
+    let args = args.into_vals(&|i| f.inputs.get(i).cloned())?;
+    let types: Vec<Ty> = args
+        .iter()
+        .map(|v| v.try_ty())
+        .collect::<Option<_>>()
+        .ok_or_else(|| TypeError::new(name, "an argument is an operation without results"))?;
+    if types != f.inputs {
+        return Err(TypeError::new(name, format!("`{ty}` takes ({}) but got ({})", TypeList(&f.inputs), TypeList(&types))));
+    }
+    Val::all_results(CallIndirect { callee, args })
+}
+
+/// `func.call_indirect` of a function value.
+#[track_caller]
+pub fn call_indirect(callee: impl Into<Val>, args: impl Operands) -> Tuple {
+    try_call_indirect(callee, args).or_panic()
+}
+
+impl HighMlir for CallIndirect {
+    fn name(&self) -> &str {
+        "func.call_indirect"
+    }
+
+    fn inputs(&self) -> Edges<'_> {
+        Box::new(std::iter::once(self.callee.clone()).chain(self.args.iter().cloned()))
+    }
+
+    fn result_types(&self) -> Vec<Ty> {
+        self.callee.ty().downcast_ref::<FunctionType>().expect("checked when built").results.clone()
+    }
+
+    fn print(&self, p: &mut OpPrinter<'_>) -> fmt::Result {
+        p.results_lhs()?;
+        let ty = p.operand_type(0);
+        write!(p, "func.call_indirect {}({}) : {ty}", p.operand(0), p.operands(1..=self.args.len()))
     }
 }

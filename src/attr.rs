@@ -280,6 +280,52 @@ impl std::ops::Mul for AffineExpr {
     }
 }
 
+impl std::ops::Sub for AffineExpr {
+    type Output = AffineExpr;
+
+    /// `lhs + rhs * -1`
+    fn sub(self, rhs: AffineExpr) -> AffineExpr {
+        self + -rhs
+    }
+}
+
+impl std::ops::Neg for AffineExpr {
+    type Output = AffineExpr;
+
+    /// `self * -1`
+    fn neg(self) -> AffineExpr {
+        self * AffineExpr::Const(-1)
+    }
+}
+
+impl From<i64> for AffineExpr {
+    fn from(c: i64) -> AffineExpr {
+        AffineExpr::Const(c)
+    }
+}
+
+impl AffineExpr {
+    /// The expression with dimensions and symbols named by `dim` and `symbol`,
+    /// e.g. `%arg0 + symbol(%1)` in the operand lists of `affine` operations.
+    pub fn render(&self, dim: &dyn Fn(u32) -> String, symbol: &dyn Fn(u32) -> String) -> String {
+        let (l, op, r) = match self {
+            AffineExpr::Dim(i) => return dim(*i),
+            AffineExpr::Symbol(i) => return symbol(*i),
+            AffineExpr::Const(c) => return c.to_string(),
+            AffineExpr::Add(l, r) => (l, "+", r),
+            AffineExpr::Mul(l, r) => (l, "*", r),
+            AffineExpr::Mod(l, r) => (l, "mod", r),
+            AffineExpr::FloorDiv(l, r) => (l, "floordiv", r),
+            AffineExpr::CeilDiv(l, r) => (l, "ceildiv", r),
+        };
+        let operand = |e: &AffineExpr| {
+            let s = e.render(dim, symbol);
+            if e.is_atom() { s } else { format!("({s})") }
+        };
+        format!("{} {op} {}", operand(l), operand(r))
+    }
+}
+
 impl fmt::Display for AffineExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (l, op, r) = match self {
@@ -355,5 +401,52 @@ impl fmt::Display for AffineMap {
         }
         let results: Vec<String> = self.results.iter().map(|e| e.to_string()).collect();
         write!(f, " -> ({})", results.join(", "))
+    }
+}
+
+/// A conjunction of affine constraints over dimensions and symbols:
+/// `(d0)[s0] : (d0 - 10 >= 0, s0 - d0 == 0)`, as `affine.if` tests.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct IntegerSet {
+    /// Number of dimensions.
+    pub dims: u32,
+    /// Number of symbols.
+    pub symbols: u32,
+    /// Each expression with whether it must be `== 0` (else `>= 0`).
+    pub constraints: Vec<(AffineExpr, bool)>,
+}
+
+impl IntegerSet {
+    /// The set where every constraint holds.
+    pub fn new(dims: u32, symbols: u32, constraints: impl IntoIterator<Item = (AffineExpr, bool)>) -> IntegerSet {
+        IntegerSet { dims, symbols, constraints: constraints.into_iter().collect() }
+    }
+
+    /// The constraint `e >= 0`.
+    pub fn ge0(e: AffineExpr) -> (AffineExpr, bool) {
+        (e, false)
+    }
+
+    /// The constraint `e == 0`.
+    pub fn eq0(e: AffineExpr) -> (AffineExpr, bool) {
+        (e, true)
+    }
+
+    /// `affine_set<...>`
+    pub fn attr(&self) -> Attr {
+        Attr::Raw(format!("affine_set<{self}>"))
+    }
+}
+
+impl fmt::Display for IntegerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let list = |prefix: &str, n: u32| (0..n).map(|i| format!("{prefix}{i}")).collect::<Vec<_>>().join(", ");
+        write!(f, "({})", list("d", self.dims))?;
+        if self.symbols > 0 {
+            write!(f, "[{}]", list("s", self.symbols))?;
+        }
+        let cs: Vec<String> =
+            self.constraints.iter().map(|(e, eq)| format!("{e} {} 0", if *eq { "==" } else { ">=" })).collect();
+        write!(f, " : ({})", cs.join(", "))
     }
 }

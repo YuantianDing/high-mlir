@@ -1,7 +1,16 @@
+pub mod affine;
 pub mod arith;
+pub mod bufferization;
 pub mod builtin;
+pub mod complex;
 pub mod func;
+pub mod gpu;
+pub mod index;
+pub mod linalg;
+pub mod math;
 pub mod memref;
 pub mod scf;
+pub mod tensor;
+pub mod ub;
 mod util;
 pub mod vector;

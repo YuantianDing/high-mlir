@@ -382,3 +382,18 @@ fn values_are_typed_by_their_mlir_type() {
     let ty: Ty = memref![F32; ?].into();
     assert!(ty.as_memref().is_some());
 }
+
+#[test]
+fn indirect_calls() {
+    let text = common::check_fn(|| {
+        let twice = high_mlir::sig!(fn twice(high_mlir::I32) -> high_mlir::I32);
+        twice.define(|x| (&x + &x).into());
+        high_mlir::sig!(fn main(high_mlir::I32) -> high_mlir::I32).define(|x| {
+            let f = twice.constant();
+            let r = high_mlir::func::call_indirect(&f, (&x,));
+            r[0].clone().into()
+        });
+    });
+    assert!(text.contains("func.constant @twice : (i32) -> i32"), "{text}");
+    assert!(text.contains("func.call_indirect %1(%arg1) : (i32) -> i32"), "{text}");
+}

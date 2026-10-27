@@ -18,6 +18,12 @@ First release.
   not open.
 - The `arith`, `memref`, `scf` and `vector` dialects (every operation of
   MLIR 23), plus `func` and `builtin`.
+- The `math`, `index`, `complex`, `ub`, `tensor` and `bufferization`
+  dialects, `affine` (loops, conditionals, affine accesses), `linalg`
+  (`generic`, `map`, `reduce` and the common named operations) and `gpu`
+  (kernels, launches, thread queries and synchronous memory operations);
+  `func.call_indirect` and `func.constant`. The roadmap in the README lists
+  what is missing.
 - Printing as textual MLIR and conversion to melior IR.
 - Annotations: discardable attributes and source locations, including the
   Rust location of the code that built each operation (`ADD_RUST_LOC`).

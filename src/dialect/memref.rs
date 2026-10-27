@@ -976,18 +976,18 @@ impl HighMlir for Reshape {
 /// Groups of consecutive dimensions, e.g. `[[0, 1], [2]]`.
 pub type Reassociation = Vec<Vec<u32>>;
 
-fn reassociation_attr(r: &Reassociation) -> Attr {
+pub(crate) fn reassociation_attr(r: &Reassociation) -> Attr {
     Attr::List(r.iter().map(|g| Attr::i64_list(g.iter().map(|&d| d as i64))).collect())
 }
 
-fn fmt_reassociation(r: &Reassociation) -> String {
+pub(crate) fn fmt_reassociation(r: &Reassociation) -> String {
     let groups: Vec<String> =
         r.iter().map(|g| format!("[{}]", g.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(", "))).collect();
     format!("[{}]", groups.join(", "))
 }
 
 /// Checks that `r` partitions `0..rank` into consecutive, non-empty groups.
-fn check_reassociation(op: &str, r: &Reassociation, rank: usize) -> Result<(), TypeError> {
+pub(crate) fn check_reassociation(op: &str, r: &Reassociation, rank: usize) -> Result<(), TypeError> {
     let flat: Vec<u32> = r.iter().flatten().copied().collect();
     let ok = r.iter().all(|g| !g.is_empty()) && flat == (0..rank as u32).collect::<Vec<_>>();
     expect(op, ok, || format!("{} is not a reassociation of {rank} dimensions", fmt_reassociation(r)))
@@ -1056,6 +1056,10 @@ pub fn try_expand_shape_with_type(
         format!("cannot expand `{src_ty}` to `{ty}`")
     })?;
     check_reassociation(name, &reassociation, dst.rank())?;
+    for (g, group) in reassociation.iter().enumerate() {
+        let size = group.iter().try_fold(1, |acc, &d| dst.shape[d as usize].map(|n| acc * n));
+        expect(name, size == m.shape[g], || format!("dimension {g} of `{src_ty}` does not match `{ty}`"))?;
+    }
     Val::new_typed(ExpandShape { source, reassociation, output_shape, ty })
 }
 
@@ -1175,21 +1179,27 @@ pub struct Window {
 }
 
 impl Window {
-    fn new(op: &str, offsets: impl MixedList, sizes: impl MixedList, strides: impl MixedList) -> Result<Window, TypeError> {
+    pub(crate) fn new(op: &str, offsets: impl MixedList, sizes: impl MixedList, strides: impl MixedList) -> Result<Window, TypeError> {
         let offsets = MixedValues::new(op, offsets)?;
         let sizes = MixedValues::new(op, sizes)?;
         let strides = MixedValues::new(op, strides)?;
         Ok(Window { offsets, sizes, strides })
     }
 
-    fn dynamic(&self) -> impl Iterator<Item = Val> + '_ {
+    pub(crate) fn dynamic(&self) -> impl Iterator<Item = Val> + '_ {
         self.offsets.dynamic.iter().chain(&self.sizes.dynamic).chain(&self.strides.dynamic).cloned()
     }
 
     fn attributes(&self) -> Vec<(String, Attr)> {
+        self.attributes_after(1)
+    }
+
+    /// The attributes, after `leading` single operands (e.g. a source and a destination).
+    pub(crate) fn attributes_after(&self, leading: usize) -> Vec<(String, Attr)> {
         let (o, s, t) = (&self.offsets, &self.sizes, &self.strides);
+        let segments = std::iter::repeat_n(1, leading).chain([o.dynamic.len(), s.dynamic.len(), t.dynamic.len()]);
         vec![
-            Attr::segments([1, o.dynamic.len(), s.dynamic.len(), t.dynamic.len()]),
+            Attr::segments(segments),
             ("static_offsets".into(), Attr::i64_array(o.statics.clone())),
             ("static_sizes".into(), Attr::i64_array(s.statics.clone())),
             ("static_strides".into(), Attr::i64_array(t.statics.clone())),
@@ -1198,15 +1208,20 @@ impl Window {
 
     /// The three lists, with the dynamic entries named after operands `1..`.
     fn format(&self, p: &OpPrinter<'_>) -> [String; 3] {
+        self.format_from(p, 1)
+    }
+
+    /// The three lists, with the dynamic entries named after operands `first..`.
+    pub(crate) fn format_from(&self, p: &OpPrinter<'_>, first: usize) -> [String; 3] {
         let (no, ns) = (self.offsets.dynamic.len(), self.sizes.dynamic.len());
         [
-            self.offsets.format(|k| p.operand(1 + k)),
-            self.sizes.format(|k| p.operand(1 + no + k)),
-            self.strides.format(|k| p.operand(1 + no + ns + k)),
+            self.offsets.format(|k| p.operand(first + k)),
+            self.sizes.format(|k| p.operand(first + no + k)),
+            self.strides.format(|k| p.operand(first + no + ns + k)),
         ]
     }
 
-    fn static_shape(&self) -> Vec<Option<u64>> {
+    pub(crate) fn static_shape(&self) -> Vec<Option<u64>> {
         self.sizes.static_values().iter().map(|d| d.map(|d| d as u64)).collect()
     }
 }

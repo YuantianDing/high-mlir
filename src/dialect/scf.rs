@@ -164,7 +164,7 @@ impl<A, R: FromTuple> ForBuilder<A, R> {
 }
 
 /// The results of an operation in the shape `R`.
-fn typed_results<R: FromTuple>(op: &str, results: Tuple) -> Result<R, TypeError> {
+pub(crate) fn typed_results<R: FromTuple>(op: &str, results: Tuple) -> Result<R, TypeError> {
     let types = TypeList(&results.iter().map(|v| v.ty()).collect::<Vec<_>>()).to_string();
     R::from_tuple(results).ok_or_else(|| TypeError::new(op, format!("results ({types}) of unexpected static types")))
 }
@@ -210,6 +210,8 @@ macro_rules! arity_methods {
         }
     };
 }
+
+pub(crate) use {arity_methods, dyn_methods};
 
 dyn_methods!(ForBuilder, "Builds the loop; `body(iv, iter_args..)` yields the next loop-carried values.");
 for_each_arity!(arity_methods ForBuilder, "Builds the loop; `body(iv, iter_args..)` yields the next loop-carried values.");

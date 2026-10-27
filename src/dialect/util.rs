@@ -1,6 +1,6 @@
 //! Type-checking helpers shared by the dialects.
 
-use crate::{MemRefType, Ty, TypeError, Val, VectorType, arith::Operands, types::INDEX};
+use crate::{MemRefType, TensorType, Ty, TypeError, Val, VectorType, arith::Operands, types::INDEX};
 
 /// The type of a result (not of an operation without results).
 pub(crate) fn value_ty(op: &str, v: &Val) -> Result<Ty, TypeError> {
@@ -36,6 +36,12 @@ pub(crate) fn vector_ty(op: &str, v: &Val) -> Result<(Ty, VectorType), TypeError
     let ty = value_ty(op, v)?;
     let vt = ty.as_vector().cloned();
     vt.map(|vt| (ty.clone(), vt)).ok_or_else(|| TypeError::new(op, format!("expected a vector, not `{ty}`")))
+}
+
+pub(crate) fn tensor_ty(op: &str, v: &Val) -> Result<(Ty, TensorType), TypeError> {
+    let ty = value_ty(op, v)?;
+    let t = ty.downcast_ref::<TensorType>().cloned();
+    t.map(|t| (ty.clone(), t)).ok_or_else(|| TypeError::new(op, format!("expected a ranked tensor, not `{ty}`")))
 }
 
 /// Checks that `n` indices address a value of rank `rank`.
